@@ -1,11 +1,15 @@
 # leekspeak
 *Luckily, I speak leek.*
 
+---
+
 ### Idea
 
 Onion addresses are hard to remember and look scary! Language is (sort of) easy to remember and looks friendly! I speak English, so I'll find a mapping between (likely nonsensical) English 'phrases' and onion addresses.
 
 *(This could definitely be done for essentially arbitrary languages, provided constraints (see below) can be met.)*
+
+---
 
 ### Background
 
@@ -28,6 +32,8 @@ So, __I want a map from every
 xyz (in base32) ---> English__
 
 ... but I don't want an *arbitrary* one.
+
+---
 
 ### Constraints
 
@@ -61,10 +67,28 @@ Then we just need to select a map such that small distance in base32 space means
 
 Pretty good word representations have already been obtained for English (although better ones presumably exist :)). I can repeat this for any language where I can obtain a large corpus. I'll just start with English since it's at hand.
 
+---
+
 ### Implementation
 
 Getting the map is my primary concern. Given that, translating back and forth is extremely trivial. 
 
 To be genuinely useful one probably needs a browser extension to do this automatically (although always with the option to view either version, for maximum safety!), but I don't know how to do that and am not sure that writing extensions for the Tor Browser is a good idea. 
 
+---
+
+### Problems
+
+##### Won't attackers just go for the language representation, then?
+Potentially, but this will force a large distance in base32-space, which the user will hopefully identify. Can't win them all (probably).
+
+##### Appending an 'on' to get to a 18-character name is idiotic/something about entropy
+Maybe, yeah. I just thought of this.
+
+##### ???
+I'm not a cryptographer.
+
+---
+
+### Gif of a frog
 ![not a fix won't bug](https://dl.dropboxusercontent.com/u/1333033/dealwithit.gif)
