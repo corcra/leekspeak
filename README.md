@@ -63,8 +63,6 @@ Pretty good word representations have already been obtained for English (althoug
 
 ### Implementation
 
-    lol python
-
 Getting the map is my primary concern. Given that, translating back and forth is extremely trivial. 
 
 To be genuinely useful one probably needs a browser extension to do this automatically (although always with the option to view either version, for maximum safety!), but I don't know how to do that and am not sure that writing extensions for the Tor Browser is a good idea. 
