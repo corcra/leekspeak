@@ -3,8 +3,11 @@
 
 from string import ascii_lowercase
 from itertools import product
+from scipy.spatial.distance import pdist
+import editdistance
 import numpy as np
 import pdb
+import sys
 
 # --- loading and prep --- #
 def get_base32():
@@ -42,6 +45,30 @@ def get_language(path):
     W = len(vocabulary)
     print 'Loaded', W, 'words from', path
     return vocabulary, vectors
+
+# --- distance metrics --- #
+
+def base32_distances(base32_triples):
+    """
+    Get pairwise Levenshtein distances.
+    This takes a little while (~10 minutes on my laptop).
+    """
+    N = len(base32_triples)
+    total = N*(N-1.0)/2
+    print 'Calculating', N*(N-1)/2, 'pairwise distances.'
+    d = np.empty(shape=(N, N), dtype=np.float)
+    n = 0
+    for i in xrange(N):
+        for j in xrange(i, N):
+            n += 1
+            if n%500000 == 0:
+                sys.stdout.write('\r'+'%.4f' % (float(n*100)/total)+'%')
+                sys.stdout.flush()
+            dij = editdistance.eval(base32_triples[i], base32_triples[j])
+            d[i, j] = dij
+            d[j, i] = dij
+    print ''
+    return dij
 
 # --- some optimisation stuff --- #
 def get_proposal(A, B):
@@ -118,6 +145,23 @@ def random_map(triples, vocabulary):
     backward_mapping = dict(zip(vocabulary, triples))
     return forward_mapping, backward_mapping
 
+def diverse_map(triples, vocabulary, vectors):
+    """
+    Map which aims to map pairs of similar base32 triples to pairs of dissimilar
+    language words.
+    """
+    N = len(triples)
+    A = base32_distances(triples)
+    B = pdist(vectors)
+    ordering = find_ordering(A, B)
+    forward_mapping, backward_mapping = dict(), dict()
+    for i in xrange(N):
+        triple = triples[i]
+        word = vocabulary[ordering[i]]
+        forward_mapping[triple] = word
+        backward_mapping[word] = triple
+    return forward_mapping, backward_mapping
+
 def get_map(triples, vocabulary, vectors=None, mapping='random'):
     """
     Prep and get a map.
@@ -125,7 +169,7 @@ def get_map(triples, vocabulary, vectors=None, mapping='random'):
     N = len(triples)
     W = len(vocabulary)
     if W < N:
-        print 'ERROR! Not enough words.'
+        print 'ERROR: Not enough words.'
         return False
     if W > N:
         print 'There are', W, 'elements in the vocabulary and only', N,
@@ -135,6 +179,12 @@ def get_map(triples, vocabulary, vectors=None, mapping='random'):
     if mapping == 'random':
         print 'Using random map.'
         forward_mapping, backward_mapping = random_map(triples, vocabulary)
+    elif mapping == 'diverse':
+        print 'Using diverse map.'
+        if vectors is None:
+            print 'ERROR: diverse map requires vectors.'
+            return False
+        forward_mapping, backward_mapping = diverse_map(triples, vocabulary, vectors)
     else:
         print 'ERROR: Not implemented :('
     return forward_mapping, backward_mapping
