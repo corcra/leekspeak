@@ -88,6 +88,9 @@ Maybe, yeah. I just thought of this.
 ##### ???
 I'm not a cryptographer.
 
+##### Vector spaces? Distance metrics? This is overkill
+This is related to my research, so it's pretty easy for me.
+
 ---
 
 ### Gif of a frog
