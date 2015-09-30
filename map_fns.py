@@ -235,14 +235,3 @@ def get_map(triples, vocabulary, vectors=None, mapping='random'):
     else:
         print 'ERROR: Not implemented :('
     return forward_mapping, backward_mapping
-
-# --- translation --- #
-def translate(onion_address, forward_mapping):
-    """
-    Translate from base32 into LANGUAGE.
-    """
-    # this is the hack to get 6 words, sorry world
-    onion_address = re.sub('.onion$', '', onion_address) + 'on'
-    triples = [onion_address[i*3:(i+1)*3] for i in xrange(6)]
-    triples_mapped = [forward_mapping[x] for x in triples]
-    return ' '.join(triples_mapped)
