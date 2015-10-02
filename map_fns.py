@@ -9,6 +9,7 @@ import numpy as np
 import pdb
 import sys
 import re
+import gzip
 
 # --- loading and prep --- #
 def get_base32():
@@ -20,7 +21,7 @@ def get_base32():
     base32_triples = [''.join(x) for x in product(base32_chars, repeat=3)]
     return base32_triples
 
-def subset_language(vocabulary, vectors, wordlist, N):
+def subset_language(vocabulary, vectors, wordlist, N=32768):
     """
     Subset the vocabulary/vectors to those in a wordlist.
     The wordlist is a list arranged in order of 'preference'.
@@ -39,7 +40,9 @@ def subset_language(vocabulary, vectors, wordlist, N):
         wordlist = np.loadtxt(wordlist, dtype=str)
     else:
         assert type(wordlist) == list or type(wordlist) == np.ndarray
+    print 'Subsetting vocabulary.'
     for word in wordlist:
+        print word
         if added == N:
             break
         try:
@@ -79,9 +82,13 @@ def get_language(path):
     print 'Loading language from', path
     vocabulary = []
     vectors = []
-    for line in open(path, 'r'):
-        sl = line.strip('\n').split(' ')
-        word = sl[0]
+    try:
+        fi = gzip.open(path, 'rb')
+    except IOError:
+        fi = open(path, 'r')
+    for line in fi:
+        sl = line.strip('\n').split('\t')
+        word = re.sub('\x00', '', sl[0])
         vocabulary.append(word)
         if len(sl) > 1:
             vector = map(float, sl[1:])
@@ -234,4 +241,8 @@ def get_map(triples, vocabulary, vectors=None, mapping='random'):
         forward_mapping, backward_mapping = diverse_map(triples, vocabulary, vectors)
     else:
         print 'ERROR: Not implemented :('
+    # sanity check
+    for (k, v) in forward_mapping.iteritems():
+        if not backward_mapping[v] == k:
+            print k, v
     return forward_mapping, backward_mapping
