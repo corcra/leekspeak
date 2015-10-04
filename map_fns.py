@@ -1,5 +1,5 @@
 #!/bin/python
-# Create a bijection between base32 triples and LANGUAGE.
+# Create a bijection between base32 nmers and LANGUAGE.
 
 from string import ascii_lowercase
 from itertools import product
@@ -11,15 +11,17 @@ import sys
 import re
 import gzip
 
+NMER_SIZE = 3
+
 # --- loading and prep --- #
 def get_base32():
     """
-    Generate triples of base32 characters.
+    Generate nmers of base32 characters.
     """
     alphabet = ascii_lowercase
     base32_chars = alphabet + '234567'
-    base32_triples = [''.join(x) for x in product(base32_chars, repeat=3)]
-    return base32_triples
+    base32_nmers = [''.join(x) for x in product(base32_chars, repeat=NMER_SIZE)]
+    return base32_nmers
 
 def subset_language(vocabulary, vectors, wordlist, N=32768):
     """
@@ -82,12 +84,15 @@ def get_language(path):
     print 'Loading language from', path
     vocabulary = []
     vectors = []
-    try:
+    if '.gz' in path:
         fi = gzip.open(path, 'rb')
-    except IOError:
+    else:
         fi = open(path, 'r')
     for line in fi:
-        sl = line.strip('\n').split('\t')
+        if '\t' in line:
+            sl = line.strip('\n').split('\t')
+        else:
+            sl = line.strip('\n').split(' ')
         word = re.sub('\x00', '', sl[0])
         vocabulary.append(word)
         if len(sl) > 1:
@@ -102,12 +107,12 @@ def get_language(path):
 
 # --- distance metrics --- #
 
-def base32_distances(base32_triples):
+def base32_distances(base32_nmers):
     """
     Get pairwise Levenshtein distances.
     This takes a little while (~10 minutes on my laptop).
     """
-    N = len(base32_triples)
+    N = len(base32_nmers)
     total = N*(N-1.0)/2
     print 'Calculating', N*(N-1)/2, 'pairwise distances.'
     d = np.empty(shape=(N, N), dtype=np.float)
@@ -118,7 +123,7 @@ def base32_distances(base32_triples):
             if n%500000 == 0:
                 sys.stdout.write('\r'+'%.4f' % (float(n*100)/total)+'%')
                 sys.stdout.flush()
-            dij = editdistance.eval(base32_triples[i], base32_triples[j])
+            dij = editdistance.eval(base32_nmers[i], base32_nmers[j])
             d[i, j] = dij
             d[j, i] = dij
     print ''
@@ -191,54 +196,54 @@ def find_ordering(A, B, eps=0.00001):
     return ordering, acceptance_rate, temperature
 
 # --- maps --- #
-def random_map(triples, vocabulary):
+def random_map(nmers, vocabulary):
     """
     Totally random map, totally unconstrained, totally boring.
     """
-    forward_mapping = dict(zip(triples, vocabulary))
-    backward_mapping = dict(zip(vocabulary, triples))
+    forward_mapping = dict(zip(nmers, vocabulary))
+    backward_mapping = dict(zip(vocabulary, nmers))
     return forward_mapping, backward_mapping
 
-def diverse_map(triples, vocabulary, vectors):
+def diverse_map(nmers, vocabulary, vectors):
     """
-    Map which aims to map pairs of similar base32 triples to pairs of dissimilar
+    Map which aims to map pairs of similar base32 nmers to pairs of dissimilar
     language words.
     """
-    N = len(triples)
-    A = base32_distances(triples)
+    N = len(nmers)
+    A = base32_distances(nmers)
     B = pdist(vectors)
     ordering = find_ordering(A, B)
     forward_mapping, backward_mapping = dict(), dict()
     for i in xrange(N):
-        triple = triples[i]
+        triple = nmers[i]
         word = vocabulary[ordering[i]]
         forward_mapping[triple] = word
         backward_mapping[word] = triple
     return forward_mapping, backward_mapping
 
-def get_map(triples, vocabulary, vectors=None, mapping='random'):
+def get_map(nmers, vocabulary, vectors=None, mapping='random'):
     """
     Prep and get a map.
     """
-    N = len(triples)
+    N = len(nmers)
     W = len(vocabulary)
     if W < N:
         print 'ERROR: Not enough words.'
         return False
     if W > N:
         print 'There are', W, 'elements in the vocabulary and only', N,
-        print 'triples: subsetting.'
+        print 'nmers: subsetting.'
         vocabulary_subset = list(np.random.choice(vocabulary, N))
         vocabulary = vocabulary_subset
     if mapping == 'random':
         print 'Using random map.'
-        forward_mapping, backward_mapping = random_map(triples, vocabulary)
+        forward_mapping, backward_mapping = random_map(nmers, vocabulary)
     elif mapping == 'diverse':
         print 'Using diverse map.'
         if vectors is None:
             print 'ERROR: diverse map requires vectors.'
             return False
-        forward_mapping, backward_mapping = diverse_map(triples, vocabulary, vectors)
+        forward_mapping, backward_mapping = diverse_map(nmers, vocabulary, vectors)
     else:
         print 'ERROR: Not implemented :('
     # sanity check
