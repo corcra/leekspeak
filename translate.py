@@ -8,7 +8,7 @@ def encode(onion_address, forward_mapping):
     Translate from base32 into LANGUAGE.
     """
     # this is the hack to get 6 words, sorry world
-    onion_address = re.sub('.onion$', '', onion_address) + 'on'
+    onion_address = re.sub('http:\/\/','', re.sub('.onion(\/)?$', '', onion_address)) + 'on'
     triples = [onion_address[i*3:(i+1)*3] for i in xrange(6)]
     triples_mapped = [forward_mapping[x] for x in triples]
     onion_language = ' '.join(triples_mapped)
