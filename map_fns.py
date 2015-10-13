@@ -3,7 +3,7 @@
 
 from string import ascii_lowercase
 from itertools import product
-from scipy.spatial.distance import pdist
+from scipy.spatial.distance import pdist, squareform
 import editdistance
 import numpy as np
 import pdb
@@ -107,10 +107,31 @@ def get_language(path):
 
 # --- distance metrics --- #
 
-def base32_distances(base32_nmers):
+def bespoke_distance(nmer1, nmer2):
     """
-    Get pairwise Levenshtein distances.
-    This takes a little while (~10 minutes on my laptop).
+    Hand-crafted distance function, probably not a real metric.
+    Thinking about what is 'hard to differentiate', as human looking at strings
+    Properties:
+    - adjacent swaps are hard to detect
+    - i ~ l (1 is not a problem as it does not exist in base32)
+    - b ~ d
+    - p ~ q
+    - m ~ n
+    - v ~ w
+    - c ~ e
+    - a ~ o
+    Note: this is largely arbitrary from me, partially influenced by:
+        http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3541865/table/t1-ptj3712663/
+    """
+    # I can already feel how slow this is going to be.
+    # some stuff goes here etc zzzz
+    d = abs(np.random.normal())
+    return d
+
+def base32_distances(base32_nmers, metric='levenshtein'):
+    """
+    Get pairwise distances (different metrics)
+    This takes a little while
     """
     N = len(base32_nmers)
     total = N*(N-1.0)/2
@@ -123,11 +144,16 @@ def base32_distances(base32_nmers):
             if n%500000 == 0:
                 sys.stdout.write('\r'+'%.4f' % (float(n*100)/total)+'%')
                 sys.stdout.flush()
-            dij = editdistance.eval(base32_nmers[i], base32_nmers[j])
+            if metric == 'levenshtein':
+                dij = editdistance.eval(base32_nmers[i], base32_nmers[j])
+            elif metric == 'bespoke':
+                dij = bespoke_distance(base32_nmers[i], base32_nmers[j])
+            else:
+                raise NotImplementedError
             d[i, j] = dij
             d[j, i] = dij
     print ''
-    return dij
+    return d
 
 # --- some optimisation stuff --- #
 def get_proposal(A, B):
@@ -211,7 +237,9 @@ def diverse_map(nmers, vocabulary, vectors):
     """
     N = len(nmers)
     A = base32_distances(nmers)
-    B = pdist(vectors)
+    print A.shape
+    B = squareform(pdist(vectors))
+    print B.shape
     ordering = find_ordering(A, B)
     forward_mapping, backward_mapping = dict(), dict()
     for i in xrange(N):
