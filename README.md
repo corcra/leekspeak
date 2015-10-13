@@ -75,6 +75,23 @@ Getting the map is my primary concern. Given that, translating back and forth is
 
 To be genuinely useful one probably needs a browser extension to do this automatically (although always with the option to view either version, for maximum safety!), but I don't know how to do that and am not sure that writing extensions for the Tor Browser is a good idea. 
 
+#### Current Status
+
+Translation is fine, although probably requires some more/any error handling/better input parsing.
+
+Before I do the fancy word vector stuff I'm using an arbitrary map between base32-triples and words, using a set of the most frequently-used English words (source: http://norvig.com/ngrams/, thanks 0xcaca0 for the link), to make sure everything works as expected.
+
+Fancy word vector stuff has been partially developed using a heuristic approach I devised on an airplane, and is likely suboptimal (although I suspect the problem is NP hard). The chain of reasoning goes as follows:  
+- requiring `small distance in base32-space == large distance in language space` basically means we need the pairwise distance matrices in each of these spaces to be as _different_ as possible
+- that means, we probably want to maximise the mean of their absolute difference _(although whitening the data before doing this might make more sense)_
+- the permitted operation to achieve this is moving any row+column to another row+column in the second matrix (second matrix being pairwise distances in the language space, although this choice is arbitrary) (I say row+column because the distance matrix is _pairwise_, but our mapping is on individual elements... so moving `j -> j'` will move _both_ *row* j and *column* j, both of them involving `j`)
+- if we fix a column (or row, whatever) in both matrices and look at the _inner product_ between these, we would like to find a re-ordering of the elements in the second vetor (derived from the second matrix) to _minimise_ this inner product. I expect this to maximise the difference since these matrices are _positive_, and their difference will be greatest when they are as 'mutually exclusive' as possible, and the inner product will capture this mutual exclusivity. Of course, when we do the re-ordering we aren't allowed to move our 'fixed' column/row index, since that would mess everything up.
+- do this iteratively, sort of like Gibbs sampling but probably much less theoretically sound
+- fearing local minima, I threw in some stochasticity by proposing a reordering (using above procedure) and then accepting it if it increases the difference between our matrices, and accepting with some rejection probability related to how much it _decreases_ the difference... that is to say, Metropolis-Hastings has been dubiously invoked
+- iterate until ???
+
+This approach has yet to be tested rigorously. So far, it approximately works (in that the distance between the matrices mostly increases), but convergence is far from guaranteed, it seems somewhat sensitive to initial conditions, and the situation of global versus local extrema is unknown. It's also probably somewhat slow and memory intensive (woo, getting a 33,000 x 33,000 pairwise distance matrix between 100-dimensional vectors!), but that's surmountable. :)
+
 ---
 
 ### Problems
