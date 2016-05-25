@@ -33,6 +33,16 @@ def subset_language(vocabulary, vectors, wordlist, N=32768):
     we supplement the result from the vocabulary randomly.
     Also, we want to make sure the order of vocabulary is random (because some
     structure could negatively influence the optimisation procedure later).
+
+    Arguments:
+        vocabulary      list of words (strings)
+        vectors         list of vectors corresponding to vocabulary
+        wordlist        str, list, or array, if str: path for .npy of words
+        N               int: number of words we want vectors for
+
+    Returns:
+        vocabulary_subset       list of words (len N)
+        vectors_subset          ndarray of vectors corresponding to words (shape[0] = N)
     """
     keep_indices = []           # indices of vocabulary/vectors to keep
     added = 0
@@ -67,7 +77,7 @@ def subset_language(vocabulary, vectors, wordlist, N=32768):
     np.random.shuffle(keep_indices)
     # populate new arrays
     print 'Populating subsetted arrays.'
-    vectors_subset = np.array([vectors[i] for i in keep_indices])
+    vectors_subset = vectors[keep_indices]
     vocabulary_subset = [vocabulary[i] for i in keep_indices]
     return vocabulary_subset, vectors_subset
 
@@ -99,6 +109,7 @@ def get_language(path):
             vector = map(float, sl[1:])
         else:
             vector = np.random.normal(size=5)
+
         vectors.append(vector)
     vectors = np.array(vectors)
     W = len(vocabulary)
@@ -107,12 +118,14 @@ def get_language(path):
 
 # --- distance metrics --- #
 
-def bespoke_distance(nmer1, nmer2):
+def distance_lookup_table():
     """
-    Hand-crafted distance function, probably not a real metric.
-    Thinking about what is 'hard to differentiate', as human looking at strings
-    Properties:
-    - adjacent swaps are hard to detect
+    Pairwise character similarity lookup table.
+   
+    Characters in base32:
+        base32_chars = alphabet + '234567'
+
+    Similarities:
     - i ~ l (1 is not a problem as it does not exist in base32)
     - b ~ d
     - p ~ q
@@ -122,8 +135,73 @@ def bespoke_distance(nmer1, nmer2):
     - a ~ o
     Note: this is largely arbitrary from me, partially influenced by:
         http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3541865/table/t1-ptj3712663/
+
     """
+    base32_chars = ascii_lowercase + '234567'
+    n_chars = len(base32_chars)
+    # start off all ones
+    distance_lookup = np.ones(shape=(n_chars, n_chars))
+    
+    # manually input the above
+    # 0.5 may not be th best for this
+
+    # b ~ d
+    distance_lookup[base32_chars.index('b'), base32_chars.index('d')] = 0.5
+    distance_lookup[base32_chars.index('d'), base32_chars.index('b')] = 0.5
+    # p ~ q
+    distance_lookup[base32_chars.index('p'), base32_chars.index('q')] = 0.5
+    distance_lookup[base32_chars.index('q'), base32_chars.index('p')] = 0.5
+    # m ~ n
+    distance_lookup[base32_chars.index('m'), base32_chars.index('n')] = 0.5
+    distance_lookup[base32_chars.index('n'), base32_chars.index('m')] = 0.5
+    # v ~ w
+    distance_lookup[base32_chars.index('v'), base32_chars.index('w')] = 0.5
+    distance_lookup[base32_chars.index('w'), base32_chars.index('v')] = 0.5
+    # c ~ e
+    distance_lookup[base32_chars.index('c'), base32_chars.index('e')] = 0.5
+    distance_lookup[base32_chars.index('e'), base32_chars.index('c')] = 0.5
+    # a ~ o
+    distance_lookup[base32_chars.index('a'), base32_chars.index('o')] = 0.5
+    distance_lookup[base32_chars.index('o'), base32_chars.index('a')] = 0.5
+
+    # zeros along the diagonal
+    for i in xrange(n_chars):
+        distance_lookup[i, i] = 0
+           
+    # the horrible dict version (i'm sure there's a lovely zip way to do this but w/e)
+    distance_lookup_dict = dict()
+    for (i, a) in enumerate(base32_chars):
+        for (j, b) in enumerate(base32_chars):
+            distance_lookup_dict[(a, b)] = distance_lookup[i, j]
+
+    return distance_lookup, distance_lookup_dict
+        
+def bespoke_distance(nmer1, nmer2, offset_kappa):
+    """
+    Hand-crafted distance function, probably not a real metric.
+    Thinking about what is 'hard to differentiate', as human looking at strings
+    Properties:
+    - adjacent swaps are hard to detect
+    - m ~ rn
+    - see pairwise_character_distance
+
+    """
+    raise NotImplementedError
+    d = 0
+    # if the nmers are identical, don't need to do anything complicated
+    if nmer1 == nmer2:
+        return d
+    # check exact correspondences (increment distances)
+    for (a, b) in zip(nmer1, nmer2):
+        d += pairwise_character_distance(a, b)      # this fn has bespoke distances
+    # now check with an offset
+    for (a, b) in zip(nmer1[1:]+nmer[0], nmer2):
+        d += offset_kappa*pairwise_character_distance(a, b)      # this fn has bespoke distances
+    # negative offset
+    for (a, b) in zip(nmer[-1]+nmer1[:-1], nmer2):
+        d += offset_kappa*pairwise_character_distance(a, b)      # this fn has bespoke distances
     # I can already feel how slow this is going to be.
+
     # some stuff goes here etc zzzz
     d = abs(np.random.normal())
     return d
@@ -181,7 +259,7 @@ def get_proposal(A, B):
     assert len(set(ordering)) == len(ordering)
     return ordering
 
-def find_ordering(A, B, eps=0.00001):
+def find_ordering(A, B, eps=0.1):
     """
     Reorder the rows/columns of B to maximise its difference to A.
     ... possibly.
@@ -238,7 +316,7 @@ def diverse_map(nmers, vocabulary, vectors):
     N = len(nmers)
     A = base32_distances(nmers)
     print A.shape
-    B = squareform(pdist(vectors))
+    B = squareform(pdist(vectors, 'cosine'))
     print B.shape
     ordering = find_ordering(A, B)
     forward_mapping, backward_mapping = dict(), dict()
