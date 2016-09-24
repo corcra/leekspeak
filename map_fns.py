@@ -253,6 +253,12 @@ def visual_string_distance(a, b):
             slide shorter word along longer, see 'same length comparison'
             take care about position 0 while sliding
             penalise d depending on n (shorter word length)
+
+    Other considerations:
+        phonetic similarity (thanks zach)
+
+    cut my life into pizza
+    this is my plastic fork
     """
     raise NotImplementedError
     return 0.5
