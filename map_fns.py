@@ -233,6 +233,30 @@ def base32_distances(base32_nmers, metric='levenshtein'):
     print ''
     return d
 
+def visual_string_distance(a, b):
+    """
+    Gets the distance between two strings (a, b) using _visual_ features.
+
+    Ideas:
+    If the length of both is the same, equal to n:
+        compare sliding window for swaps, remember which letters are involved
+            in swaps, normalise by length of string
+        compare letter by letter, using similarity table as for base32
+            normalise by length of string 
+                (so if 1 position differs with value 1, total dissim is 1/n)
+            except for position 0, which is special and gets weighted more
+            also exclude positions involved in swaps
+
+    If the lengths are different, by d:
+        if d > 3: return 1 (max dissimilar)
+        else:
+            slide shorter word along longer, see 'same length comparison'
+            take care about position 0 while sliding
+            penalise d depending on n (shorter word length)
+    """
+    raise NotImplementedError
+    return 0.5
+
 # --- maps --- #
 def random_map(nmers, vocabulary):
     """
